@@ -1,0 +1,27 @@
+#!/bin/bash
+
+#SBATCH -p compute
+#SBATCH --output=transdecodon%a.out
+#SBATCH -t 1-0
+#SBATCH --mem=584G
+#SBATCH -c 32
+#SBATCH --array=0-23
+
+# transdecoder path
+TDLongOrfs="/apps/unit/TransDecoder-TransDecoder-v5.5.0/TransDecoder.LongOrfs"
+TDPredict="/apps/unit/TransDecoder-TransDecoder-v5.5.0/TransDecoder.Predict"
+
+#Creates array of assembly folders
+folders=(*_L001)
+
+# Select the folder for this array task
+current_folder="${folders[${SLURM_ARRAY_TASK_ID}]}"
+
+# Create and move to output directory
+cd "${current_folder}"
+mkdir -p transdecoder
+cd transdecoder
+
+# Run TransDecoder
+$TDLongOrfs -t ../transcripts.fasta
+$TDPredict -t ../transcripts.fasta
