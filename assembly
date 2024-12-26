@@ -1,0 +1,28 @@
+#!/bin/bash
+
+#SBATCH -p compute
+#SBATCH --output=rnaSPADES%a.out
+#SBATCH -t 4-0
+#SBATCH --mem=500G
+#SBATCH -c 64
+
+# Download modules
+ml python/3.11.4
+spades="/path/to/bin/spades.py"
+
+# Path to directory
+trimmed_reads="/path/to/trimmed/reads"
+
+# Run rnaSPADES
+$spades --rna \
+--pe1-1 $trimmed_reads/100_P1_cDNA_S20_L001_R1_trimmed.fastq.gz --pe1-2 $trimmed_reads/100_P1_cDNA_S20_L001_R2_trimmed.fastq.gz \
+--pe1-1 $trimmed_reads/100_P2_cDNA_S10_L001_R1_trimmed.fastq.gz --pe1-2 $trimmed_reads/100_P2_cDNA_S10_L001_R2_trimmed.fastq.gz \
+--pe1-1 $trimmed_reads/100_P3_cDNA_S11_L001_R1_trimmed.fastq.gz --pe1-2 $trimmed_reads/100_P3_cDNA_S11_L001_R2_trimmed.fastq.gz \
+--pe1-1 $trimmed_reads/100_P4_cDNA_S12_L001_R1_trimmed.fastq.gz --pe1-2 $trimmed_reads/100_P4_cDNA_S12_L001_R2_trimmed.fastq.gz \
+--pe1-1 $trimmed_reads/100_P5_cDNA_S13_L001_R1_trimmed.fastq.gz --pe1-2 $trimmed_reads/100_P5_cDNA_S13_L001_R2_trimmed.fastq.gz \
+--pe2-1 $trimmed_reads/10_P1_cDNA_S14_L001_R1_trimmed.fastq.gz --pe2-2 $trimmed_reads/10_P1_cDNA_S14_L001_R2_trimmed.fastq.gz \
+--pe2-1 $trimmed_reads/10_P2_cDNA_S15_L001_R1_trimmed.fastq.gz --pe2-2 $trimmed_reads/10_P2_cDNA_S15_L001_R2_trimmed.fastq.gz \
+--pe2-1 $trimmed_reads/10_P3_cDNA_S21_L001_R1_trimmed.fastq.gz --pe2-2 $trimmed_reads/10_P3_cDNA_S21_L001_R2_trimmed.fastq.gz \
+--pe2-1 $trimmed_reads/10_P4_cDNA_S22_L001_R1_trimmed.fastq.gz --pe2-2 $trimmed_reads/10_P4_cDNA_S22_L001_R2_trimmed.fastq.gz \
+--pe2-1 $trimmed_reads/10_P5_cDNA_S23_L001_R1_trimmed.fastq.gz --pe2-2 $trimmed_reads/10_P5_cDNA_S23_L001_R2_trimmed.fastq.gz \
+-o spades_output -t 96 -m 500
