@@ -1,0 +1,35 @@
+#!/bin/bash
+
+#SBATCH -p compute
+#SBATCH --output=fastp_pipe%a.out
+#SBATCH -t 4-0
+#SBATCH --mem=128G
+#SBATCH -c 64
+#SBATCH --array=0-23
+
+## Fastp path
+fastp=/path/to/fastp
+
+# Adapter file
+adapter="/path/to/adapters.fa"
+
+# Directory of raw reads
+rawreads="/path/to/raw/reads"
+
+# Create arrays of forward and reverse reads
+reads1=(${rawreads}/*_L001_R1_001.fastq.gz) # forward reads
+reads2=(${rawreads}/*_L001_R2_001.fastq.gz) # reverse reads
+
+# Access individual read pairs using SLURM array index
+fwd_read=${reads1[$SLURM_ARRAY_TASK_ID]}
+rev_read=${reads2[$SLURM_ARRAY_TASK_ID]}
+
+# Output names
+name_fwd=$(basename "$fwd_read" _001.fastq.gz)
+output_fwd="${name_fwd}_trimmed.fastq.gz"
+
+name_rev=$(basename "$rev_read" _001.fastq.gz)
+output_rev="${name_rev}_trimmed.fastq.gz"
+
+# Run fastp
+$fastp -i "$fwd_read" -o "$output_fwd" -I "$rev_read" -O "$output_rev" --adapter_fasta "$adapter" -Q 30 --trim_front1 10 --trim_front2 10
