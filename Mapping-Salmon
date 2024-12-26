@@ -1,0 +1,36 @@
+#!/bin/bash
+
+#SBATCH -p compute
+#SBATCH --output=salmon_pipe%a.out
+#SBATCH -t 4-0
+#SBATCH --mem=500G
+#SBATCH -c 64
+#SBATCH --array=0-9
+
+# load modules
+source /home/k/kotchanipa-rukruam/miniconda3/bin/activate
+conda activate /home/k/kotchanipa-rukruam/tools/salmon
+
+# Path to directories
+trimmed_reads="/path/to/trimmed/reads"
+reference="/path/to/ref"
+output="/path/to/salmon/output"
+
+# Create arrays of forward and reverse reads
+reads1=(${trimmed_reads}/*_L001_R1_trimmed.fastq.gz) # forward reads
+reads2=(${trimmed_reads}/*_L001_R2_trimmed.fastq.gz) # reverse reads
+
+# Access individual read pairs using SLURM array index
+fwd_read=${reads1[$SLURM_ARRAY_TASK_ID]}
+rev_read=${reads2[$SLURM_ARRAY_TASK_ID]}
+
+# Output directory names
+name=$(basename "$fwd_read" _R1_trimmed.fastq.gz)
+
+mkdir -p $output/$name
+
+# Create index file
+salmon index -t $reference/transcripts.fasta -i $reference/foram_transcripts
+
+# Map reads to the reference
+salmon quant -i $reference/foram_transcripts -l A -1 $fwd_read -2 $rev_read --validateMappings -o $output/$name
