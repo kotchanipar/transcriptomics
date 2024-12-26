@@ -1,0 +1,34 @@
+#!/bin/bash
+
+#SBATCH -p compute
+#SBATCH --output=rnaSPADES%a.out
+#SBATCH -t 4-0
+#SBATCH --mem=500G
+#SBATCH -c 64
+#SBATCH --array=0-0
+
+# load modules
+module load bioinfo-ugrp-modules DebianMed/12.0
+module load kallisto/0.48.0+dfsg-3
+
+# Path
+trimmed_reads="/path/to/trimmed/reads"
+reference="/path/to/ref"
+output="/path/to/kallisto/output"
+
+# Create arrays of forward and reverse reads
+reads1=(${trimmed_reads}/*_L001_R1_trimmed.fastq.gz) # forward reads
+reads2=(${trimmed_reads}/*_L001_R2_trimmed.fastq.gz) # reverse reads
+
+# Access individual read pairs using SLURM array index
+fwd_read=${reads1[$SLURM_ARRAY_TASK_ID]}
+rev_read=${reads2[$SLURM_ARRAY_TASK_ID]}
+
+# Output directory names
+name=$(basename "$fwd_read" _R1_trimmed.fastq.gz)
+
+#Create an index from your reference transcriptome
+kallisto index --make-unique -i ${reference}/transcripts.idx ${reference}/transcripts.fasta
+
+#Map the reads to the reference transcriptome index
+kallisto quant -i ${reference}/transcripts.idx -o $output $fwd_read $rev_read
