@@ -1,0 +1,75 @@
+#!/bin/bash
+
+#SBATCH -p compute
+#SBATCH --output=bowtie2_pipe_%a.out
+#SBATCH -t 4-0
+#SBATCH --mem=500G
+#SBATCH -c 64
+#SBATCH --array=0-9
+
+# Load modules
+ml bowtie2/2.4.2
+ml samtools/1.12
+
+# Define directories
+trimmed_reads="/path/to/trimmed/reads"
+ref="/path/to/transcript_ref.fasta"
+bam="/path/to/bam/files/directory"
+aligned_read="/path/to/aligned/reads"
+
+# Create arrays of forward and reverse reads
+reads1=(${trimmed_reads}/*_R1_trimmed.fastq.gz)  # Forward reads
+reads2=(${trimmed_reads}/*_R2_trimmed.fastq.gz)  # Reverse reads
+
+# Access individual read pairs using SLURM array index
+fwd_read=${reads1[$SLURM_ARRAY_TASK_ID]}
+rev_read=${reads2[$SLURM_ARRAY_TASK_ID]}
+
+# Output file name
+name=$(basename "$fwd_read" _R1_trimmed.fastq.gz)
+
+# Step I: Bowtie2 Index reference
+refidx="${ref%.fasta}"
+bowtie2-build ${ref} ${refidx}
+
+# Step II: Bowtie2 alignment
+bowtie2 -x ${refidx} \
+    -1 "$fwd_read" -2 "$rev_read" \
+    -S "${aligned_read}/${name}.sam" \
+    --local -p 64
+
+# Step III: Convert SAM to BAM and sort
+samtools sort "${aligned_read}/${name}.sam" -o "${bam}/${name}_sorted.bam"
+# rm "${aligned_read}/${name}.sam"  # Remove SAM file to save space
+
+# Step IV: Index the sorted BAM files
+samtools index "${bam}/${name}_sorted.bam"
+
+
+#!/bin/bash
+
+#SBATCH -p compute
+#SBATCH --output=htseq_pipe_%a.out
+#SBATCH -t 4-0
+#SBATCH --mem=500G
+#SBATCH -c 64
+#SBATCH --array=0-9
+
+# Load modules
+ml HTSeq/0.9.1
+
+# Define paths
+bam="/path/to/bam/files/directory"
+gtf="/path/to/transcript.fasta.transdecoder.gtf"
+
+# Create array of BAM files
+bam_input=(${bam}/*_sorted.bam)
+
+# Get the current BAM file based on the SLURM array task ID
+read_bam=${bam_input[$SLURM_ARRAY_TASK_ID]}
+
+# Create a meaningful output filename
+output=$(basename "$read_bam" _sorted.bam)_htseq.count
+
+# Run HTSeq-count and save the output
+htseq-count -f bam -s no -r pos -i gene_id "$read_bam" "$gtf" > "$output"
