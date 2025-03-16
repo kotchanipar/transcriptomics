@@ -1,0 +1,80 @@
+#!/bin/bash
+
+# Input and output files
+INPUT_FILE="ec_input.csv"
+OUTPUT_FILE="ec_with_KEGG.csv"
+TEMP_DIR="temp_kegg_data"
+
+# Create temporary directory
+mkdir -p $TEMP_DIR
+
+# Function to get KEGG IDs for an EC number
+get_kegg_ids() {
+    ec=$1
+    if [ -z "$ec" ]; then
+        echo ""
+        return
+    fi
+    
+    # Check if we've already processed this EC number
+    if [ -f "$TEMP_DIR/${ec// /_}.txt" ]; then
+        cat "$TEMP_DIR/${ec// /_}.txt"
+        return
+    fi
+    
+    # Query KEGG API
+    result=$(curl -s "https://rest.kegg.jp/link/ko/ec:$ec" | awk -F'\t' '{if(NF>1) {gsub("ko:", "", $2); print $2}}' | paste -sd "," -)
+    
+    # Cache the result
+    echo "$result" > "$TEMP_DIR/${ec// /_}.txt"
+    echo "$result"
+}
+
+# Create header for output file
+echo "ec,KEGG" > $OUTPUT_FILE
+
+# Read input file line by line, skipping header
+tail -n +2 $INPUT_FILE | while IFS= read -r line || [[ -n "$line" ]]; do
+    # Extract EC number
+    ec=$(echo "$line" | tr -d '\r')
+    
+    # Skip empty lines
+    if [ -z "$ec" ]; then
+        echo "," >> $OUTPUT_FILE
+        continue
+    fi
+    
+    echo "Processing: $ec"
+    
+    # Process multiple EC numbers if separated by /
+    if [[ "$ec" == */* ]]; then
+        IFS='/' read -ra EC_ARRAY <<< "$ec"
+        kegg_ids=""
+        
+        for single_ec in "${EC_ARRAY[@]}"; do
+            # Get KEGG IDs and combine them
+            single_ec=$(echo "$single_ec" | xargs)  # Trim whitespace
+            result=$(get_kegg_ids "$single_ec")
+            
+            if [ -n "$result" ] && [ -n "$kegg_ids" ]; then
+                kegg_ids="$kegg_ids,$result"
+            elif [ -n "$result" ]; then
+                kegg_ids="$result"
+            fi
+        done
+        
+        # Remove duplicate IDs
+        kegg_ids=$(echo "$kegg_ids" | tr ',' '\n' | sort | uniq | tr '\n' ',' | sed 's/,$//')
+    else
+        # Get KEGG IDs for single EC number
+        kegg_ids=$(get_kegg_ids "$ec")
+    fi
+    
+    # Write to output file
+    echo "$ec,$kegg_ids" >> $OUTPUT_FILE
+    
+    # Rate limiting
+    sleep 0.2
+done
+
+echo "Processing complete. Output written to $OUTPUT_FILE"
